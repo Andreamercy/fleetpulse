@@ -1,0 +1,48 @@
+# One command: docker compose up --build        (UI: http://localhost:8000/ui   Grafana: http://localhost:3000)
+# Needs ~8 GB RAM for the full 100k-vehicle stream; set VEHICLES=10000 for a laptop.
+x-app: &app
+  build: .
+  env_file: .env
+  depends_on: { init: { condition: service_completed_successfully } }
+services:
+  redpanda:                                   # Kafka API-compatible broker (swap for MSK/Confluent/Strimzi without code change)
+    image: redpandadata/redpanda:v24.1.7
+    command: [redpanda, start, --smp=2, --memory=1G, --overprovisioned, --node-id=0, --kafka-addr=0.0.0.0:9092, --advertise-kafka-addr=redpanda:9092]
+    healthcheck: { test: ["CMD", "rpk", "cluster", "health"], interval: 5s, retries: 20 }
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.3
+    ulimits: { nofile: { soft: 262144, hard: 262144 } }
+    healthcheck: { test: ["CMD", "clickhouse-client", "-q", "SELECT 1"], interval: 5s, retries: 20 }
+    volumes: [chdata:/var/lib/clickhouse]
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment: { POSTGRES_USER: fleet, POSTGRES_DB: fleetpulse, POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}" }
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U fleet -d fleetpulse"], interval: 5s, retries: 20 }
+    volumes: [pgdata:/var/lib/postgresql/data]
+  redis:
+    image: redis:7-alpine
+    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 5s, retries: 20 }
+  init:                                       # schema + topics + seeded 100K-vehicle dataset
+    build: .
+    env_file: .env
+    depends_on: { redpanda: { condition: service_healthy }, clickhouse: { condition: service_healthy }, postgres: { condition: service_healthy } }
+    command: ["sh", "-c", "python -m db.init"]
+    restart: "no"
+  ingest:
+    <<: *app
+    command: ["python", "-m", "fleetpulse.ingest.adapters"]
+    deploy: { replicas: 4 }                   # consumer group scales with partitions; add replicas, no code change
+  api:
+    <<: *app
+    ports: ["8000:8000"]
+  simulator:
+    <<: *app
+    command: ["python", "-m", "fleetpulse.sim.cli", "--vehicles", "${VEHICLES:-100000}", "--sink", "kafka", "--burst-at", "120"]
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    volumes: ["./infra/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro"]
+  grafana:
+    image: grafana/grafana:10.4.2
+    ports: ["3000:3000"]
+    environment: { GF_AUTH_ANONYMOUS_ENABLED: "true", GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer }
+volumes: { chdata: {}, pgdata: {} }

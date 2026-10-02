@@ -1,0 +1,58 @@
+{{- range $name, $cmd := dict "api" (list "uvicorn" "fleetpulse.api.main:app" "--host" "0.0.0.0" "--port" "8000") "ingest" (list "python" "-m" "fleetpulse.ingest.adapters") }}
+{{- $v := index $.Values $name }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: fp-{{ $name }}, labels: { app: fp-{{ $name }} } }
+spec:
+  replicas: {{ $v.replicas }}
+  strategy: { rollingUpdate: { maxUnavailable: 0, maxSurge: 1 } }
+  selector: { matchLabels: { app: fp-{{ $name }} } }
+  template:
+    metadata: { labels: { app: fp-{{ $name }} }, annotations: { prometheus.io/scrape: "true", prometheus.io/port: "9100" } }
+    spec:
+      terminationGracePeriodSeconds: 45          # ingest flushes + commits offsets on SIGTERM
+      topologySpreadConstraints:
+        - { maxSkew: 1, topologyKey: topology.kubernetes.io/zone, whenUnsatisfiable: ScheduleAnyway, labelSelector: { matchLabels: { app: fp-{{ $name }} } } }
+      securityContext: { runAsNonRoot: true, runAsUser: 10001, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: {{ $name }}
+          image: "{{ $.Values.image.repository }}:{{ $.Values.image.tag }}"
+          command: {{ toJson $cmd }}
+          envFrom: [{ secretRef: { name: {{ $.Values.secretName }} } }]
+          env: {{- range $k, $val := $.Values.env }}
+            - { name: {{ $k }}, value: {{ $val | quote }} }{{ end }}
+          resources: { requests: { cpu: {{ $v.cpu }}, memory: {{ $v.memory }} }, limits: { memory: {{ $v.memory }} } }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: [ALL] } }
+          {{- if eq $name "api" }}
+          ports: [{ containerPort: 8000 }]
+          readinessProbe: { httpGet: { path: /healthz, port: 8000 }, periodSeconds: 5 }
+          livenessProbe:  { httpGet: { path: /healthz, port: 8000 }, periodSeconds: 10, failureThreshold: 3 }
+          {{- end }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata: { name: fp-{{ $name }} }
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: fp-{{ $name }} }
+  minReplicas: {{ $v.minReplicas }}
+  maxReplicas: {{ $v.maxReplicas }}
+  metrics: [{ type: Resource, resource: { name: cpu, target: { type: Utilization, averageUtilization: 65 } } }]
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: { name: fp-{{ $name }} }
+spec: { minAvailable: 2, selector: { matchLabels: { app: fp-{{ $name }} } } }
+{{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: default-deny-ingress }
+spec: { podSelector: {}, policyTypes: [Ingress] }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-ingress-to-api }
+spec:
+  podSelector: { matchLabels: { app: fp-api } }
+  ingress: [{ from: [{ namespaceSelector: { matchLabels: { name: ingress-nginx } } }], ports: [{ port: 8000 }] }]

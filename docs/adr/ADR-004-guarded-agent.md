@@ -1,0 +1,5 @@
+# ADR-004: Agent = planner + allow-listed tools; never direct data access
+**Status:** accepted
+**Context:** The brief asks for an agent that answers or acts on fleet data with guardrails and an audit trail. LLM output is untrusted (prompt injection can fully control it).
+**Decision:** The planner (rule-based by default; an LLM can implement the same `Planner` protocol) only emits `ToolCall(name, args)`. The service: allow-lists tools; validates args (VIN format, bounded ints); injects tenant and role from the JWT; caps 3 tool calls per question; returns structured data only; makes mutating tools return `PENDING_APPROVAL` so a human `fleet_manager` must approve; writes every call, denial and approval to a hash-chained audit log. A test drives the service with a fully malicious planner and shows each attack is contained.
+**Consequences:** (+) bounded blast radius even under total prompt compromise; (-) less autonomous than a free-form agent - intentional. Default planner is deterministic, so demos work offline with no API key.

@@ -1,0 +1,15 @@
+groups:
+- name: fleetpulse-slo
+  rules:
+  - alert: IngestInvalidRatioHigh
+    expr: rate(fp_ingest_invalid_total[5m]) / rate(fp_ingest_received_total[5m]) > 0.01
+    for: 5m
+    annotations: { summary: ">1% of messages failing validation: an OEM probably changed its format" }
+  - alert: IngestBufferGrowing
+    expr: fp_ingest_buffer_rows > 50000
+    for: 2m
+    annotations: { summary: "sink slower than ingest -> back-pressure engaged; check ClickHouse" }
+  - alert: ConsumerLagHigh
+    expr: redpanda_kafka_consumer_group_lag_sum{redpanda_group="fp-ingest"} > 600000
+    for: 2m
+    annotations: { summary: "lag > ~2 s of 300k ev/s; scale ingest replicas" }

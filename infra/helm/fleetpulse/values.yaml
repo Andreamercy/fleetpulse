@@ -1,0 +1,7 @@
+image: { repository: ghcr.io/your-org/fleetpulse, tag: v1.0-submission }
+api:    { replicas: 3, minReplicas: 3, maxReplicas: 20, cpu: "500m", memory: 512Mi }
+ingest: { replicas: 6, minReplicas: 6, maxReplicas: 48, cpu: "1", memory: 1Gi }   # <= partition count (48)
+# Connection endpoints are injected from a Secret created by External Secrets (AWS Secrets Manager / GCP Secret Manager / Azure Key Vault)
+secretName: fleetpulse-runtime
+env: { KAFKA_BROKERS: "kafka:9092", CLICKHOUSE_HOST: clickhouse, REPO: sql, ENV: prod }
+ingress: { host: fleetpulse.example.com, tlsSecret: fleetpulse-tls }

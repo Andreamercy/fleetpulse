@@ -1,0 +1,37 @@
+{
+  "scale": {
+    "vehicles": 100000,
+    "alerts": 1500000,
+    "risk_rows": 100000,
+    "vectors": 50000,
+    "postgres": "16.2 embedded (pgserver), 1 vCPU sandbox"
+  },
+  "index_build_seconds": 5.6,
+  "queries": {
+    "Q1": {
+      "before_ms": 131.859,
+      "after_ms": 0.02
+    },
+    "Q2": {
+      "before_ms": 25.401,
+      "after_ms": 0.081
+    },
+    "Q3": {
+      "before_ms": 202.749,
+      "after_ms": 0.692
+    },
+    "Q5": {
+      "before_ms": 15.274,
+      "after_ms": 0.077
+    }
+  },
+  "pagination_deep_page": {
+    "offset_1500_ms": 0.797,
+    "keyset_ms": 0.021
+  },
+  "orm_n_plus_1": {
+    "n_plus_1_ms": 0.697,
+    "single_join_ms": 0.2,
+    "queries_issued": "26 vs 1"
+  }
+}

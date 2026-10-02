@@ -1,0 +1,45 @@
+{
+  "env": "1 vCPU sandbox, Python 3.12.3",
+  "simulator_100k_vehicles": {
+    "events": 297398,
+    "events_per_sec_single_core": 175402,
+    "avg_event_bytes": 209.2
+  },
+  "processor_single_core": {
+    "messages": 250000,
+    "msgs_per_sec": 25524,
+    "accepted": 247412,
+    "duplicates": 2465,
+    "late": 0,
+    "invalid_to_dlq": 123,
+    "alerts": 21,
+    "bloom_checks": 2465,
+    "bloom_est_fp_rate": 0.0
+  },
+  "capacity_plan": {
+    "target_ev_s": 300000,
+    "note": "100K ev/s sustained x 3 burst",
+    "consumer_cores_needed_at_70pct_util": 17
+  },
+  "api_http_in_memory_repo": {
+    "saturation_closed_loop_c20": {
+      "requests": 3000,
+      "rps": 241,
+      "p50_ms": 61.8,
+      "p95_ms": 191.0,
+      "p99_ms": 285.4
+    },
+    "open_loop_60rps": {
+      "requests": 900,
+      "p50_ms": 3.3,
+      "p95_ms": 4.6,
+      "p99_ms": 5.8
+    },
+    "open_loop_100rps": {
+      "requests": 1500,
+      "p50_ms": 3.1,
+      "p95_ms": 4.4,
+      "p99_ms": 5.4
+    }
+  }
+}

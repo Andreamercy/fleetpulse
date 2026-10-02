@@ -1,0 +1,14 @@
+# Omitted: infrastructure glue (Kafka/ClickHouse/Redis/Postgres adapters, CLI, entrypoint) is covered by
+# tests/integration (Testcontainers, runs in CI); ports.py is Protocol declarations only.
+[run]
+source = fleetpulse
+omit =
+    fleetpulse/ingest/adapters.py
+    fleetpulse/api/sqlrepo.py
+    fleetpulse/api/main.py
+    fleetpulse/sim/cli.py
+    fleetpulse/ingest/ports.py
+[report]
+fail_under = 80
+exclude_lines =
+    pragma: no cover

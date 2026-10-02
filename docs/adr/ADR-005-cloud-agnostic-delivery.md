@@ -1,0 +1,4 @@
+# ADR-005: Cloud-agnostic delivery with Docker, Helm, and swappable managed services
+**Status:** accepted
+**Decision:** One OCI image runs as api / ingest / simulator. Compose is the one-command local path; a Helm chart is the cluster path; Terraform provisions one cloud (AWS: VPC, EKS, MSK, RDS Multi-AZ) while all endpoints are injected as environment variables from a secret manager. Moving to GCP/Azure replaces the Terraform module and Helm *values* only - no code change. Rate limiting uses a token bucket (in-memory per replica here; a Redis Lua variant gives a global limit when strict fairness across replicas is required).
+**Consequences:** (+) portable; (-) managed-service feature differences (e.g. MSK vs Confluent metrics) leak into ops runbooks. Terraform and Helm were authored but **not applied or linted in the authoring sandbox**.

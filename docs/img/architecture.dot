@@ -1,0 +1,20 @@
+digraph G { rankdir=LR; bgcolor="white"; fontname="Helvetica"; node [fontname="Helvetica", fontsize=11, shape=box, style="rounded,filled", fillcolor="#eef3fb", color="#4a6fa5"]; edge [fontname="Helvetica", fontsize=9, color="#555555"];
+ subgraph cluster_edge { label="Edge / sources"; style=dashed; color="#999999";
+  sim [label="Fleet simulator\n(100k vehicles, sharded)\nbursts · dupes · out-of-order", fillcolor="#fff4d6"]; oem [label="OEM clouds / MQTT\n(alpha · beta · canonical)", fillcolor="#fff4d6"]; }
+ subgraph cluster_stream { label="Streaming plane"; style=dashed; color="#999999";
+  kafka [label="Kafka (Redpanda / MSK)\ntelemetry · 48 partitions, key=VIN\nalerts · telemetry.dlq", shape=cylinder, fillcolor="#e3f4e1"];
+  ingest [label="Ingest service ×N\nOEM adapters → validate → dedupe\n→ window rules → batch sink"]; }
+ subgraph cluster_store { label="Polyglot storage"; style=dashed; color="#999999";
+  ch [label="ClickHouse\ntelemetry (hot/warm)\nPARTITION day · ORDER tenant,vin,ts", shape=cylinder, fillcolor="#fde7e7"];
+  redis [label="Redis\nlatest vehicle state\nrate-limit / cache", shape=cylinder, fillcolor="#fde7e7"];
+  pg [label="PostgreSQL 16 + pgvector\n3NF core · risk · audit\nfault_case vectors (HNSW)", shape=cylinder, fillcolor="#fde7e7"];
+  s3 [label="Object store (Parquet)\ncold tier", shape=cylinder, fillcolor="#fde7e7"]; }
+ subgraph cluster_ml { label="Batch / ML"; style=dashed; color="#999999"; score [label="Risk scoring job\nHistGradientBoosting\nvs rule baseline"]; }
+ subgraph cluster_app { label="Application"; style=dashed; color="#999999";
+  api [label="API (FastAPI)\nJWT/OIDC · RBAC · tenant isolation\nrate limit · keyset pagination"]; agent [label="Agent\nallow-listed tools · audit\nhuman approval for actions"]; ui [label="Web UI", fillcolor="#f0e6fa"]; }
+ obs [label="Prometheus · Grafana\nOpenTelemetry · logs", fillcolor="#eeeeee"];
+ sim -> kafka [label="Kafka producer\nidempotent, back-pressure"]; oem -> kafka [label="mTLS"];
+ kafka -> ingest [label="consumer group\nat-least-once"]; ingest -> ch [label="batch insert\n(idempotent)"]; ingest -> redis [label="latest state"]; ingest -> kafka [label="alerts / DLQ", style=dashed];
+ ch -> score [label="vehicle_day_agg"]; score -> pg [label="risk upsert"]; ch -> s3 [label="TTL export", style=dashed];
+ ui -> api [label="HTTPS"]; api -> pg; api -> redis; api -> ch; api -> agent; agent -> pg [style=dashed];
+ ingest -> obs [style=dotted]; api -> obs [style=dotted]; }

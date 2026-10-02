@@ -1,0 +1,5 @@
+apiVersion: v2
+name: fleetpulse
+version: 1.0.0
+appVersion: "1.0.0"
+description: FleetPulse - ingest, API and simulator. Cloud-agnostic: only values.yaml differs per cloud.

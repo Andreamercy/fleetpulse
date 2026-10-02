@@ -1,0 +1,18 @@
+{
+  "n_test_rows": 665730,
+  "positive_rate": 0.003603563006023463,
+  "baseline": {
+    "pr_auc": 0.15086657796217956,
+    "roc_auc": 0.7182013081779401,
+    "recall_at_top5pct": 0.4952063359733222,
+    "precision_at_top5pct": 0.0356906807666887
+  },
+  "model": {
+    "pr_auc": 0.6895373520771337,
+    "roc_auc": 0.9339601123567329,
+    "recall_at_top5pct": 0.8345143809920801,
+    "precision_at_top5pct": 0.06014540647719762
+  },
+  "rows": 2335725,
+  "seconds": 26.9
+}

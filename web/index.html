@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FleetPulse — breakdown risk</title>
+<style>
+:root{--bg:#0f1720;--card:#17212c;--ink:#e6edf3;--mut:#8aa0b4;--ok:#3fb950;--warn:#d29922;--bad:#f85149;--acc:#58a6ff}
+*{box-sizing:border-box}body{margin:0;font:14px/1.45 system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+header{display:flex;gap:16px;align-items:center;padding:14px 20px;border-bottom:1px solid #223}
+header h1{font-size:18px;margin:0}header select,header button{background:var(--card);color:var(--ink);border:1px solid #2b3a4a;padding:6px 10px;border-radius:6px}
+main{display:grid;grid-template-columns:2fr 1fr;gap:16px;padding:16px 20px}@media(max-width:900px){main{grid-template-columns:1fr}}
+.card{background:var(--card);border-radius:10px;padding:14px;overflow:auto}.card h2{font-size:14px;margin:0 0 10px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #1f2c3a;font-variant-numeric:tabular-nums}
+tr.row{cursor:pointer}tr.row:hover{background:#1c2a38}.bar{height:8px;border-radius:4px;background:#243447;min-width:90px}.bar i{display:block;height:100%;border-radius:4px}
+.sev5,.sev4{color:var(--bad)}.sev3{color:var(--warn)}.sev2,.sev1{color:var(--mut)}.pill{padding:2px 8px;border-radius:99px;background:#243447;color:var(--mut);font-size:12px}
+input{width:100%;padding:8px;border-radius:6px;border:1px solid #2b3a4a;background:#0f1720;color:var(--ink)}
+#chat .msg{margin:6px 0;padding:8px;border-radius:8px;background:#0f1720;white-space:pre-wrap;font:12px/1.4 ui-monospace,monospace}
+.muted{color:var(--mut)}.kpi{display:flex;gap:18px;margin-bottom:10px}.kpi b{font-size:22px;display:block}
+</style></head><body>
+<header><h1>FleetPulse</h1><span class="pill" id="who">not signed in</span>
+<label class="muted">Role <select id="role"><option>fleet_manager</option><option>analyst</option><option>viewer</option><option>admin</option></select></label>
+<label class="muted">Tenant <select id="tenant"><option>t00</option><option>t01</option><option>t02</option></select></label>
+<button id="login">Sign in (dev token)</button><button id="more" disabled>Load more</button></header>
+<main>
+<section class="card"><div class="kpi"><div><b id="k1">–</b><span class="muted">vehicles loaded</span></div><div><b id="k2">–</b><span class="muted">high risk (&ge;0.30)</span></div><div><b id="k3">–</b><span class="muted">open critical alerts</span></div></div>
+<h2>Vehicles ranked by 7-day breakdown risk</h2><table><thead><tr><th>VIN</th><th>Risk</th><th></th><th>Top factors</th><th>Fuel</th><th>Location</th></tr></thead><tbody id="veh"></tbody></table></section>
+<aside style="display:grid;gap:16px"><section class="card"><h2>Critical alerts</h2><table><tbody id="alerts"></tbody></table></section>
+<section class="card" id="chat"><h2>Ask the fleet agent</h2><input id="q" placeholder="e.g. which vehicles are most at risk?  /  book a work order for &lt;VIN&gt;"><div id="msgs"></div></section></aside>
+</main>
+<script>
+let token=null,cursor=null,loaded=0,high=0;const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));   // never inject API strings as HTML
+async function api(path,opt={}){const r=await fetch(path,{...opt,headers:{...(opt.headers||{}),Authorization:'Bearer '+token,'Content-Type':'application/json'}});
+ if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error((e.error&&e.error.message)||r.status)}return r.json()}
+const color=r=>r>=.3?'var(--bad)':r>=.12?'var(--warn)':'var(--ok)';
+async function login(){const t=await (await fetch(`/dev/token?role=${$('role').value}&tenant=${$('tenant').value}`)).json();token=t.token;
+ $('who').textContent=`${$('role').value} @ ${$('tenant').value}`;$('veh').innerHTML='';cursor=null;loaded=0;high=0;await Promise.all([more(),alerts()]);$('more').disabled=false}
+async function more(){const d=await api(`/v1/vehicles?limit=25${cursor?'&cursor='+encodeURIComponent(cursor):''}`);cursor=d.next_cursor;
+ for(const v of d.items){loaded++;if(v.risk>=.3)high++;const tr=document.createElement('tr');tr.className='row';
+  tr.innerHTML=`<td>${esc(v.vin)}</td><td>${(v.risk*100).toFixed(1)}%</td><td><div class="bar"><i style="width:${Math.min(100,v.risk*250)}%;background:${color(v.risk)}"></i></div></td><td class="muted">${esc((v.factors||[]).join(', ')||'–')}</td><td>${esc(v.fuel)}</td><td class="muted">${v.lat.toFixed(3)}, ${v.lon.toFixed(3)}${v.location_masked?' <span class="pill">masked</span>':''}</td>`;
+  tr.onclick=()=>{$('q').value='summary of '+v.vin;ask()};$('veh').appendChild(tr)}
+ $('k1').textContent=loaded;$('k2').textContent=high;if(!cursor)$('more').disabled=true}
+async function alerts(){const d=await api('/v1/alerts?limit=8&min_severity=4');$('k3').textContent=d.items.length+(d.next_cursor?'+':'');
+ $('alerts').innerHTML=d.items.map(a=>`<tr><td class="sev${a.severity}">${esc(a.type)}</td><td>${esc(a.vin)}</td><td class="muted">${esc(a.ts.slice(11,16))}</td></tr>`).join('')}
+async function ask(){const q=$('q').value.trim();if(!q||!token)return;const d=await api('/v1/agent/ask',{method:'POST',body:JSON.stringify({question:q})});
+ const div=document.createElement('div');div.className='msg';div.textContent='› '+q+'\n'+d.steps.map(s=>s.tool+': '+JSON.stringify(s.result||s.error)).join('\n');$('msgs').prepend(div);$('q').value=''}
+$('login').onclick=()=>login().catch(e=>alert(e.message));$('more').onclick=()=>more().catch(e=>alert(e.message));$('q').onkeydown=e=>{if(e.key==='Enter')ask().catch(x=>alert(x.message))};
+</script></body></html>

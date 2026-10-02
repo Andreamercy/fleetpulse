@@ -1,0 +1,6 @@
+global: { scrape_interval: 5s }
+scrape_configs:
+  - job_name: ingest
+    dns_sd_configs: [{ names: [ingest], type: A, port: 9100 }]    # every replica
+  - job_name: redpanda
+    static_configs: [{ targets: ["redpanda:9644"] }]

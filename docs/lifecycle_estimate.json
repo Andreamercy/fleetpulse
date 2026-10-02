@@ -1,0 +1,17 @@
+{
+  "events_per_day": 8640000000,
+  "avg_event_bytes": 209.2,
+  "raw_json_tb_per_day": 1.81,
+  "compression_assumed": 8,
+  "compressed_gb_per_day": 226,
+  "hot_gb": 1582,
+  "warm_gb": 18753,
+  "cold_gb": 22707,
+  "monthly_usd": {
+    "hot": 127,
+    "warm": 431,
+    "cold": 284,
+    "total": 842
+  },
+  "case_study_sizing_raw_tb_day": 8.64
+}

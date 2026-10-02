@@ -1,0 +1,13 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pyjwt[crypto]>=2.7
+pydantic>=2.6
+numpy>=1.26
+pandas>=2.1
+scikit-learn>=1.4
+orjson>=3.9
+confluent-kafka>=2.3
+clickhouse-connect>=0.7
+redis>=5.0
+psycopg[binary,pool]>=3.1
+prometheus-client>=0.20
