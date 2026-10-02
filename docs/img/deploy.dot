@@ -1,0 +1,10 @@
+digraph D { rankdir=TB; nodesep=0.5; ranksep=0.6; bgcolor="white"; node [fontname="Helvetica", fontsize=15, shape=box, style="rounded,filled", fillcolor="#eef3fb", color="#4a6fa5"]; edge [fontname="Helvetica", fontsize=13, color="#444444"];
+ user [label="Browser", shape=oval, fillcolor="#f0e6fa"]; dev [label="Vehicles / OEM clouds\n/ simulator", shape=oval, fillcolor="#fff4d6"];
+ subgraph cluster_vpc { label="VPC across 3 availability zones (ap-south-1)"; fontsize=15; style=dashed; color="#888888";
+  lb [label="Ingress + WAF\nTLS 1.3"];
+  subgraph cluster_eks { label="EKS namespace fleetpulse (default-deny NetworkPolicy)"; fontsize=14; color="#4a6fa5";
+   api [label="api  3-20 pods\nHPA 65% CPU, PDB>=2"]; ing [label="ingest  6-48 pods\n(<= 48 partitions)\nSIGTERM: flush + commit"]; }
+  subgraph cluster_data { label="private data subnets"; fontsize=14; color="#888888";
+   msk [label="Kafka\nMSK x3, TLS", shape=cylinder, fillcolor="#e3f4e1"]; ch [label="ClickHouse\n3 shards x 2 replicas", shape=cylinder, fillcolor="#fde7e7"]; pg [label="PostgreSQL Multi-AZ\n+ pgvector, AES-256\n+ Redis (replicated)", shape=cylinder, fillcolor="#fde7e7"]; } }
+ side [label="Also: Secrets Manager/KMS via External Secrets  |  S3 Parquet cold tier (TTL export)\nPrometheus + Grafana + OTel collector in namespace observability", shape=note, fillcolor="#eeeeee", fontsize=13];
+ user -> lb [label="HTTPS"]; lb -> api; dev -> msk [label="mTLS (design)"]; msk -> ing; api -> pg; api -> ch; ing -> ch; ing -> pg; ch -> side [style=invis]; }
