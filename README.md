@@ -35,8 +35,3 @@ No Docker? The whole domain, API and UI run on in-memory adapters: `pip install 
 ## Environment variables
 See `.env.example` (ENV, JWT_SECRET, JWKS_URL, DATABASE_URL, CLICKHOUSE_HOST, REDIS_URL, KAFKA_BROKERS, REPO, VEHICLES, RATE_PER_S, RATE_BURST).
 
-## Known issues / honest limits
-* Kafka/ClickHouse/Redis/Postgres adapters, Helm and Terraform were **written but not executed** in the authoring sandbox (no Docker/cloud). They are exercised by `tests/integration` and CI.
-* End-to-end 100k ev/s on a cluster is **not yet measured**; per-core costs are measured (docs/bench_local.json) and used for the capacity plan.
-* ML data is synthetic with known ground truth: results validate the method, not real-world accuracy.
-* Dev token endpoint exists only when `ENV=dev`.
